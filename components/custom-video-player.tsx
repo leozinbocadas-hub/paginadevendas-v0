@@ -136,6 +136,18 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", g
       setDuration(video.duration)
       setIsLoading(false)
       setHasError(false)
+      
+      // Tenta autoplay apenas quando os metadados estão carregados
+      if (autoplay && video.paused && !isPlaying) {
+        video.play().catch((error: any) => {
+          console.log("Autoplay após metadata:", error)
+          if (error.name === "NotAllowedError") {
+            video.muted = true
+            setIsMuted(true)
+            video.play().catch(console.error)
+          }
+        })
+      }
     }
 
     const handleTimeUpdate = () => {
@@ -152,10 +164,17 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", g
     }
 
     const handleEnded = () => {
-      setIsPlaying(false)
-      setCurrentTime(0)
-      if (progressBarRef.current) {
-        progressBarRef.current.style.width = "0%"
+      // Se o vídeo tiver loop, reinicia automaticamente
+      if (video.loop) {
+        video.currentTime = 0
+        video.play().catch(console.error)
+        setIsPlaying(true)
+      } else {
+        setIsPlaying(false)
+        setCurrentTime(0)
+        if (progressBarRef.current) {
+          progressBarRef.current.style.width = "0%"
+        }
       }
     }
 
@@ -197,27 +216,30 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", g
     video.addEventListener("waiting", handleWaiting)
     document.addEventListener("fullscreenchange", handleFullscreenChange)
 
-    // Autoplay com fallback para muted
-    if (autoplay) {
+    // Autoplay com fallback para muted (apenas uma vez)
+    if (autoplay && !isPlaying && video.readyState >= 2) {
       const attemptPlay = async () => {
-        try {
-          await video.play()
-          setIsPlaying(true)
-        } catch (error: any) {
-          console.log("Autoplay bloqueado:", error)
-          // Tenta autoplay mutado como fallback
-          if (error.name === "NotAllowedError") {
-            video.muted = true
-            setIsMuted(true)
-            try {
-              await video.play()
-              setIsPlaying(true)
-            } catch (mutedError) {
-              console.log("Autoplay mutado também bloqueado:", mutedError)
+        // Evita múltiplas tentativas
+        if (video.paused && !isPlaying) {
+          try {
+            await video.play()
+            setIsPlaying(true)
+          } catch (error: any) {
+            console.log("Autoplay bloqueado:", error)
+            // Tenta autoplay mutado como fallback
+            if (error.name === "NotAllowedError") {
+              video.muted = true
+              setIsMuted(true)
+              try {
+                await video.play()
+                setIsPlaying(true)
+              } catch (mutedError) {
+                console.log("Autoplay mutado também bloqueado:", mutedError)
+                setIsPlaying(false)
+              }
+            } else {
               setIsPlaying(false)
             }
-          } else {
-            setIsPlaying(false)
           }
         }
       }
@@ -308,6 +330,7 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", g
         className="absolute inset-0 w-full h-full object-cover"
         playsInline
         preload="auto"
+        loop={false}
         onClick={togglePlay}
         crossOrigin="anonymous"
         onError={(e) => {
