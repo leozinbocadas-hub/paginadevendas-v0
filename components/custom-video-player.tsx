@@ -7,9 +7,10 @@ interface CustomVideoPlayerProps {
   videoUrl: string
   autoplay?: boolean
   className?: string
+  googleDriveFileId?: string
 }
 
-export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }: CustomVideoPlayerProps) {
+export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", googleDriveFileId }: CustomVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -117,20 +118,18 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
     const video = videoRef.current
     if (!video) return
 
-    // Se for Google Drive, tenta usar iframe diretamente (mais confiável)
-    if (videoUrl.includes("drive.google.com") && !videoUrl.includes(".mp4") && !videoUrl.includes(".webm")) {
-      const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-      if (fileIdMatch) {
-        // Aguarda um pouco para ver se o vídeo HTML5 carrega, se não, usa iframe
-        const timeout = setTimeout(() => {
-          if (isLoading && !video.duration) {
-            setUseIframe(true)
-            setHasError(false)
-          }
-        }, 3000)
-        
-        return () => clearTimeout(timeout)
-      }
+    // Se for Google Drive, tenta usar iframe após tentar HTML5
+    if (googleDriveFileId || (videoUrl.includes("drive.google.com") && !videoUrl.includes(".mp4") && !videoUrl.includes(".webm"))) {
+      // Aguarda 2 segundos para ver se o vídeo HTML5 carrega
+      const timeout = setTimeout(() => {
+        if (isLoading && (!video.duration || video.readyState < 2)) {
+          setUseIframe(true)
+          setHasError(false)
+          setIsLoading(false)
+        }
+      }, 2000)
+      
+      return () => clearTimeout(timeout)
     }
 
     const handleLoadedMetadata = () => {
@@ -261,10 +260,9 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
   }, [autoplay, isPlaying, videoUrl])
 
   // Se precisar usar iframe (fallback para Google Drive)
-  if (useIframe && videoUrl.includes("drive.google.com")) {
-    const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-    const fileId = fileIdMatch ? fileIdMatch[1] : ""
-    const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview?autoplay=1&mute=0`
+  if (useIframe && googleDriveFileId) {
+    // Tenta múltiplos formatos de embed do Google Drive
+    const iframeUrl = `https://drive.google.com/file/d/${googleDriveFileId}/preview?usp=drivesdk&autoplay=1&mute=0`
     
     return (
       <div
@@ -273,11 +271,21 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
       >
         <iframe
           src={iframeUrl}
-          className="w-full h-full"
-          allow="autoplay; encrypted-media"
+          className="w-full h-full rounded-lg"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           allowFullScreen
           style={{ border: "none" }}
+          loading="eager"
+          referrerPolicy="no-referrer-when-downgrade"
         />
+        {/* Mensagem caso o iframe seja bloqueado */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
+          <p className="text-white text-sm text-center px-4">
+            Se o vídeo não aparecer, o Google Drive pode estar bloqueando o embedding.
+            <br />
+            Considere usar um serviço de hospedagem de vídeo dedicado.
+          </p>
+        </div>
       </div>
     )
   }
@@ -307,10 +315,14 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
           setIsLoading(false)
           setHasError(true)
           // Tenta usar iframe se for Google Drive
-          if (videoUrl.includes("drive.google.com")) {
+          if (googleDriveFileId) {
+            setUseIframe(true)
+            setHasError(false)
+          } else if (videoUrl.includes("drive.google.com")) {
             const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
             if (fileIdMatch) {
               setUseIframe(true)
+              setHasError(false)
             }
           }
         }}

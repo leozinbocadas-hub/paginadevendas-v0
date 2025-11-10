@@ -74,9 +74,12 @@ function getGoogleDriveDirectUrl(url: string): string {
   
   if (!fileId) return ""
   
-  // Para vídeos, o Google Drive requer o formato de download direto
-  // Este formato funciona melhor para streaming de vídeos
+  // Tenta múltiplos formatos do Google Drive
+  // Formato 1: uc?export=download (força download, mas pode funcionar para streaming)
+  // Formato 2: uc?export=view (visualização)
   // IMPORTANTE: O arquivo deve estar configurado como "Qualquer pessoa com o link pode ver"
+  
+  // Primeiro tenta o formato de download (mais comum para vídeos)
   return `https://drive.google.com/uc?export=download&id=${fileId}`
 }
 
@@ -107,7 +110,7 @@ export function HeroSection() {
   const hasVideo = Boolean(videoUrl)
   const isGoogleDrive = VIDEO_URL.includes("drive.google.com") && !VIDEO_URL.includes(".mp4") && !VIDEO_URL.includes(".webm")
   
-  // Extrai o file ID do Google Drive para usar no iframe
+  // Extrai o file ID do Google Drive
   let googleDriveFileId = ""
   if (isGoogleDrive) {
     const fileMatch = VIDEO_URL.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
@@ -115,6 +118,9 @@ export function HeroSection() {
       googleDriveFileId = fileMatch[1]
     }
   }
+  
+  // Para Google Drive, tenta usar o player HTML5 primeiro com URL direta
+  // Se não funcionar, o componente CustomVideoPlayer tentará iframe como fallback
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-4 py-20 overflow-hidden">
@@ -144,19 +150,12 @@ export function HeroSection() {
 
         <div className="pt-8 pb-4">
           <div className="relative w-full max-w-4xl mx-auto aspect-video bg-background/30 backdrop-blur-sm border border-primary/20 rounded-lg overflow-hidden shadow-2xl glow-purple transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(147,51,234,0.3)] hover:scale-[1.01]">
-            {hasVideo && isGoogleDrive && googleDriveFileId ? (
-              // Iframe do Google Drive (mais confiável para vídeos)
-              <iframe
-                src={`https://drive.google.com/file/d/${googleDriveFileId}/preview?autoplay=1&mute=0`}
-                className="w-full h-full rounded-lg"
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-                style={{ border: "none" }}
-              />
-            ) : hasVideo ? (
-              // Player de vídeo customizado com barra roxa (para URLs diretas)
+            {hasVideo ? (
+              // Player de vídeo customizado com barra roxa
+              // Para Google Drive, tenta URL direta primeiro, depois iframe como fallback
               <CustomVideoPlayer 
-                videoUrl={videoUrl} 
+                videoUrl={videoUrl}
+                googleDriveFileId={isGoogleDrive ? googleDriveFileId : undefined}
                 autoplay={true}
                 className="rounded-lg"
               />
