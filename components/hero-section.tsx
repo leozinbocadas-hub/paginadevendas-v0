@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { ChevronDown, Sparkles } from "lucide-react"
 import { CustomVideoPlayer } from "@/components/custom-video-player"
-import { BunnyIframe } from "@/components/bunny-iframe"
-import { useMemo } from "react"
+import { useMemo, useRef, useEffect } from "react"
 
 // URL do vídeo - Cole aqui a URL do seu vídeo
 // 
@@ -48,7 +47,12 @@ import { useMemo } from "react"
 // Exemplo YouTube: https://www.youtube.com/watch?v=VIDEO_ID
 // Exemplo Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
 // Exemplo servidor: https://seuservidor.com/video.mp4
-const VIDEO_URL = "https://iframe.mediadelivery.net/embed/539276/06a6aff2-d8da-41dc-8942-ae5119eca3aa" // Cole sua URL aqui
+// URL do vídeo - Cole aqui a URL do seu vídeo
+// Exemplo Vimeo iframe: <iframe src="https://player.vimeo.com/video/1135509969?badge=0&autopause=0&player_id=0&app_id=58479" ...></iframe>
+// Exemplo Vimeo URL: https://vimeo.com/1135509969
+// Exemplo Bunny.net direto: https://vz-xxxxx.b-cdn.net/xxxxx/play_480p.mp4
+// Exemplo YouTube: https://www.youtube.com/watch?v=VIDEO_ID
+const VIDEO_URL = "https://player.vimeo.com/video/1135509969?badge=0&autopause=0&player_id=0&app_id=58479" // Vimeo
 
 // Função para detectar se é uma URL direta de vídeo
 function isDirectVideoUrl(url: string): boolean {
@@ -96,6 +100,46 @@ function getGoogleDriveDirectUrl(url: string): string {
   
   // Primeiro tenta o formato de download (mais comum para vídeos)
   return `https://drive.google.com/uc?export=download&id=${fileId}`
+}
+
+// Função para detectar e extrair informações do Vimeo
+function getVimeoInfo(url: string): { isVimeo: boolean; videoId?: string; embedUrl?: string } {
+  if (!url) return { isVimeo: false }
+  
+  // Detecta se é URL do Vimeo ou iframe do Vimeo
+  if (url.includes("vimeo.com") || url.includes("player.vimeo.com")) {
+    // Extrai o ID do vídeo de diferentes formatos
+    // Formato 1: https://vimeo.com/1135509969
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    // Formato 2: https://player.vimeo.com/video/1135509969
+    const playerMatch = url.match(/player\.vimeo\.com\/video\/(\d+)/)
+    
+    const videoId = vimeoMatch?.[1] || playerMatch?.[1]
+    
+    if (videoId) {
+      // Se já for uma URL completa do player, adiciona autoplay se não tiver
+      if (url.includes("player.vimeo.com") && url.includes("?")) {
+        // Adiciona autoplay se não estiver presente
+        let embedUrl = url
+        if (!url.includes("autoplay=")) {
+          embedUrl += (url.includes("&") ? "&" : "?") + "autoplay=1"
+        }
+        return {
+          isVimeo: true,
+          videoId: videoId,
+          embedUrl: embedUrl,
+        }
+      }
+      // Caso contrário, constrói a URL do embed
+      return {
+        isVimeo: true,
+        videoId: videoId,
+        embedUrl: `https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=0&muted=0`,
+      }
+    }
+  }
+  
+  return { isVimeo: false }
 }
 
 // Função para extrair ID do YouTube
@@ -147,14 +191,20 @@ function getBunnyNetUrl(url: string): { isIframe: boolean; iframeUrl?: string; d
   const iframeEmbedMatch = url.match(/iframe\.mediadelivery\.net\/embed\/(\d+)\/([a-zA-Z0-9-]+)/)
   
   if (iframePlayMatch || iframeEmbedMatch) {
-    // Converte para formato embed se for play
-    let iframeUrl = url
-    if (iframePlayMatch) {
-      iframeUrl = url.replace('/play/', '/embed/')
-    }
-    return {
-      isIframe: true,
-      iframeUrl: iframeUrl,
+    // Tenta converter iframe URL para URL direta para evitar scripts de métricas
+    const match = iframePlayMatch || iframeEmbedMatch
+    if (match) {
+      const libraryId = match[1]
+      const videoId = match[2]
+      // Tenta construir URL direta (formato comum do Bunny.net)
+      // Pode variar, mas geralmente é: https://vz-{libraryId}.b-cdn.net/{videoId}/play_480p.mp4
+      // Ou: https://vz-{libraryId}.b-cdn.net/{libraryId}/{videoId}/play_480p.mp4
+      const directUrl = `https://vz-${libraryId}.b-cdn.net/${libraryId}/${videoId}/play_480p.mp4`
+      
+      return {
+        isIframe: false,
+        directUrl: directUrl,
+      }
     }
   }
   
@@ -169,11 +219,17 @@ function getBunnyNetUrl(url: string): { isIframe: boolean; iframeUrl?: string; d
   return { isIframe: false }
 }
 
+// Variável global para garantir que o iframe só seja criado uma vez
+let globalIframeCreated = false
+
 export function HeroSection() {
+  const iframeContainerRef = useRef<HTMLDivElement>(null)
+  
   const videoUrl = processVideoUrl(VIDEO_URL)
   const hasVideo = Boolean(videoUrl)
   const isGoogleDrive = VIDEO_URL.includes("drive.google.com") && !VIDEO_URL.includes(".mp4") && !VIDEO_URL.includes(".webm")
   const isYouTube = VIDEO_URL.includes("youtube.com") || VIDEO_URL.includes("youtu.be")
+  const vimeoInfo = useMemo(() => getVimeoInfo(VIDEO_URL), [VIDEO_URL])
   const bunnyNet = useMemo(() => getBunnyNetUrl(VIDEO_URL), [VIDEO_URL])
   
   // Extrai o file ID do Google Drive
@@ -188,13 +244,67 @@ export function HeroSection() {
   // Extrai o ID do YouTube
   const youtubeVideoId = isYouTube ? getYouTubeVideoId(VIDEO_URL) : ""
   
-  // URL do iframe memoizada para evitar recriações
+  // URL do iframe do Vimeo
+  const vimeoEmbedUrl = vimeoInfo.isVimeo && vimeoInfo.embedUrl ? vimeoInfo.embedUrl : ""
+  
+  // URL do iframe memoizada para evitar recriações (sem autoplay)
   const iframeSrc = useMemo(() => {
     if (bunnyNet.isIframe && bunnyNet.iframeUrl) {
-      return `${bunnyNet.iframeUrl}?autoplay=true&loop=false&muted=false&preload=true&responsive=true`
+      return `${bunnyNet.iframeUrl}?autoplay=false&loop=false&muted=false&preload=true&responsive=true`
     }
     return ""
   }, [bunnyNet.isIframe, bunnyNet.iframeUrl])
+  
+  // Cria o iframe apenas uma vez usando useEffect
+  useEffect(() => {
+    const container = iframeContainerRef.current
+    if (!bunnyNet.isIframe || !bunnyNet.iframeUrl || !iframeSrc || !container) {
+      return
+    }
+    
+    // Verifica se já foi criado globalmente
+    if (globalIframeCreated) {
+      // Se já existe um iframe em outro lugar, move para o container atual
+      const existingIframe = document.querySelector(`iframe[src*="${bunnyNet.iframeUrl}"]`) as HTMLIFrameElement
+      if (existingIframe && existingIframe.parentElement !== container) {
+        container.appendChild(existingIframe)
+      }
+      return
+    }
+    
+    // Verifica se já existe um iframe no container
+    const existingInContainer = container.querySelector("iframe")
+    if (existingInContainer) {
+      globalIframeCreated = true
+      return
+    }
+    
+    // Verifica se já existe um iframe em qualquer lugar da página
+    const existingIframe = document.querySelector(`iframe[src*="${bunnyNet.iframeUrl}"]`) as HTMLIFrameElement
+    if (existingIframe) {
+      globalIframeCreated = true
+      // Move o iframe existente para o container atual
+      container.appendChild(existingIframe)
+      return
+    }
+    
+    // Cria o iframe apenas uma vez
+    globalIframeCreated = true
+    const iframe = document.createElement("iframe")
+    iframe.src = iframeSrc
+    iframe.className = "rounded-lg"
+    iframe.setAttribute("allow", "accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture")
+    iframe.allowFullscreen = true
+    iframe.loading = "eager"
+    iframe.style.border = "0"
+    iframe.style.position = "absolute"
+    iframe.style.top = "0"
+    iframe.style.height = "100%"
+    iframe.style.width = "100%"
+    container.appendChild(iframe)
+    
+    // Não faz cleanup para evitar recriações
+  }, [bunnyNet.isIframe, bunnyNet.iframeUrl, iframeSrc])
   
   // Para Google Drive, tenta usar o player HTML5 primeiro com URL direta
   // Se não funcionar, o componente CustomVideoPlayer tentará iframe como fallback
@@ -226,10 +336,19 @@ export function HeroSection() {
         </p>
 
         <div className="pt-8 pb-4">
-          <div className="relative w-full max-w-4xl mx-auto aspect-video bg-background/30 backdrop-blur-sm border border-primary/20 rounded-lg overflow-hidden shadow-2xl glow-purple transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(147,51,234,0.3)] hover:scale-[1.01]">
-            {bunnyNet.isIframe && bunnyNet.iframeUrl && iframeSrc ? (
-              // Bunny.net iframe embed - usando componente separado para evitar recriações
-              <BunnyIframe src={iframeSrc} className="rounded-lg" />
+          <div className="relative w-full max-w-4xl mx-auto aspect-video bg-background/30 backdrop-blur-sm border border-primary/20 rounded-lg overflow-hidden shadow-2xl glow-purple">
+            {vimeoInfo.isVimeo && vimeoEmbedUrl ? (
+              // Vimeo iframe
+              <iframe
+                src={vimeoEmbedUrl}
+                className="absolute inset-0 w-full h-full rounded-lg"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+                allowFullScreen
+                style={{ border: "none" }}
+              />
+            ) : bunnyNet.isIframe && bunnyNet.iframeUrl && iframeSrc ? (
+              // Bunny.net iframe embed - criado diretamente via DOM para evitar recriações
+              <div ref={iframeContainerRef} className="absolute inset-0 w-full h-full" />
             ) : bunnyNet.directUrl ? (
               // Bunny.net URL direta (player customizado)
               <CustomVideoPlayer 
