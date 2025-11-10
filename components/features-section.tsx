@@ -62,26 +62,26 @@ export function FeaturesSection() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="grid md:grid-cols-2 gap-8 items-center bg-card border border-border rounded-lg p-8 md:p-12 hover:border-primary/50 transition-colors"
+              className="grid md:grid-cols-2 gap-8 items-center bg-card border border-border rounded-lg p-8 md:p-12 transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01] group"
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="w-7 h-7 text-primary" />
+                  <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:bg-primary/20 group-hover:scale-110 group-hover:rotate-6">
+                    <feature.icon className="w-7 h-7 text-primary transition-all duration-300 group-hover:scale-110" />
                   </div>
                   <div>
-                    <h3 className="font-serif text-2xl md:text-3xl font-bold">{feature.title}</h3>
-                    <p className="text-primary text-sm font-medium">{feature.subtitle}</p>
+                    <h3 className="font-serif text-2xl md:text-3xl font-bold transition-all duration-300 group-hover:text-primary">{feature.title}</h3>
+                    <p className="text-primary text-sm font-medium transition-all duration-300 group-hover:font-semibold">{feature.subtitle}</p>
                   </div>
                 </div>
-                <p className="text-muted-foreground leading-relaxed text-lg">{feature.description}</p>
+                <p className="text-muted-foreground leading-relaxed text-lg transition-all duration-300 group-hover:text-foreground/90">{feature.description}</p>
               </div>
 
               <div className="space-y-3">
                 {feature.benefits.map((benefit, benefitIndex) => (
-                  <div key={benefitIndex} className="flex items-start gap-3 bg-secondary/50 rounded-lg p-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
-                    <span className="text-foreground">{benefit}</span>
+                  <div key={benefitIndex} className="flex items-start gap-3 bg-secondary/50 rounded-lg p-4 transition-all duration-300 hover:bg-secondary/70 hover:translate-x-2 hover:shadow-md group-hover:border group-hover:border-primary/20 cursor-pointer">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0 transition-all duration-300 group-hover:scale-150" />
+                    <span className="text-foreground transition-all duration-300 group-hover:font-medium">{benefit}</span>
                   </div>
                 ))}
               </div>

@@ -40,17 +40,17 @@ export function TestimonialsSection() {
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="bg-card border border-border rounded-lg p-6 space-y-4 hover:border-primary/50 transition-colors"
+              className="bg-card border border-border rounded-lg p-6 space-y-4 transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-105 hover:-translate-y-2 group cursor-pointer"
             >
               <div className="flex gap-1">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                  <Star key={i} className="w-4 h-4 fill-primary text-primary transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-[0_0_8px_rgba(147,51,234,0.8)]" />
                 ))}
               </div>
-              <p className="text-foreground leading-relaxed">"{testimonial.text}"</p>
-              <div className="pt-4 border-t border-border">
-                <p className="font-semibold text-foreground">{testimonial.name}</p>
-                <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+              <p className="text-foreground leading-relaxed transition-all duration-300 group-hover:text-foreground/90">"{testimonial.text}"</p>
+              <div className="pt-4 border-t border-border transition-all duration-300 group-hover:border-primary/30">
+                <p className="font-semibold text-foreground transition-all duration-300 group-hover:text-primary">{testimonial.name}</p>
+                <p className="text-sm text-muted-foreground transition-all duration-300 group-hover:text-foreground/70">{testimonial.title}</p>
               </div>
             </div>
           ))}

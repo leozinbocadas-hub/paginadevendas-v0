@@ -41,13 +41,13 @@ export function PlatformsSection() {
           {platforms.map((platform, index) => (
             <div
               key={index}
-              className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 text-center space-y-4"
+              className="bg-card border border-border rounded-lg p-8 transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 hover:scale-105 hover:-translate-y-2 text-center space-y-4 group cursor-pointer"
             >
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto glow-purple-sm">
-                <platform.icon className="w-8 h-8 text-primary" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto glow-purple-sm transition-all duration-300 group-hover:bg-primary/20 group-hover:scale-125 group-hover:rotate-12 group-hover:shadow-lg group-hover:shadow-primary/50">
+                <platform.icon className="w-8 h-8 text-primary transition-all duration-300 group-hover:scale-110" />
               </div>
-              <h3 className="font-serif text-2xl font-bold">{platform.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{platform.description}</p>
+              <h3 className="font-serif text-2xl font-bold transition-all duration-300 group-hover:text-primary">{platform.title}</h3>
+              <p className="text-muted-foreground leading-relaxed transition-all duration-300 group-hover:text-foreground/80">{platform.description}</p>
             </div>
           ))}
         </div>

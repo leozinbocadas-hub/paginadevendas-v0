@@ -44,13 +44,13 @@ export function ValueSection() {
           {/* Benefits list */}
           <div className="grid md:grid-cols-2 gap-4">
             {benefits.map((benefit, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-primary" />
+              <div key={index} className="flex items-start gap-3 transition-all duration-300 hover:translate-x-2 group cursor-pointer">
+                <div className="mt-0.5 flex-shrink-0 transition-all duration-300 group-hover:scale-125 group-hover:rotate-12">
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 group-hover:bg-primary/30 group-hover:shadow-md group-hover:shadow-primary/50">
+                    <Check className="w-3 h-3 text-primary transition-all duration-300 group-hover:scale-110" />
                   </div>
                 </div>
-                <span className="text-foreground">{benefit}</span>
+                <span className="text-foreground transition-all duration-300 group-hover:text-primary group-hover:font-medium">{benefit}</span>
               </div>
             ))}
           </div>

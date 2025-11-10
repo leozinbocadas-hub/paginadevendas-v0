@@ -64,13 +64,13 @@ export function IntroSection() {
           {pillars.map((pillar, index) => (
             <div
               key={index}
-              className="bg-card border border-border rounded-lg p-6 space-y-3 hover:border-primary/50 transition-colors"
+              className="bg-card border border-border rounded-lg p-6 space-y-3 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02] hover:-translate-y-1 group cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <pillar.icon className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center transition-all duration-300 group-hover:bg-primary/20 group-hover:scale-110 group-hover:rotate-3">
+                <pillar.icon className="w-6 h-6 text-primary transition-all duration-300 group-hover:scale-110" />
               </div>
-              <h3 className="font-serif text-xl font-semibold">{pillar.title}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">{pillar.description}</p>
+              <h3 className="font-serif text-xl font-semibold transition-all duration-300 group-hover:text-primary">{pillar.title}</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed transition-all duration-300 group-hover:text-foreground/80">{pillar.description}</p>
             </div>
           ))}
         </div>
@@ -82,7 +82,7 @@ export function IntroSection() {
             {modules.map((module, index) => (
               <span
                 key={index}
-                className="px-4 py-2 bg-secondary border border-border rounded-full text-sm font-medium hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                className="px-4 py-2 bg-secondary border border-border rounded-full text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:border-primary/50 hover:scale-110 hover:shadow-md hover:shadow-primary/20 cursor-pointer"
               >
                 {module}
               </span>
