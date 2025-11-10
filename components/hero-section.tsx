@@ -33,7 +33,7 @@ import { CustomVideoPlayer } from "@/components/custom-video-player"
 // Cole aqui a URL DIRETA do seu vídeo
 // Exemplo Google Drive: https://drive.google.com/uc?export=view&id=1ABC123xyz456
 // Exemplo servidor: https://seuservidor.com/video.mp4
-const VIDEO_URL = "" // Cole sua URL DIRETA de vídeo aqui
+const VIDEO_URL = "https://drive.google.com/file/d/1ldg7CtfTrNCbNsJvLncwuV4JegPQ9zis/view?usp=sharing" // Cole sua URL DIRETA de vídeo aqui
 
 // Função para detectar se é uma URL direta de vídeo
 function isDirectVideoUrl(url: string): boolean {
