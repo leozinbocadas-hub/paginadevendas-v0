@@ -213,10 +213,10 @@ export function HeroSection() {
               // Bunny.net iframe embed
               <iframe
                 src={bunnyNet.iframeUrl}
-                className="w-full h-full rounded-lg"
+                className="absolute inset-0 w-full h-full rounded-lg"
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                 allowFullScreen
-                style={{ border: "none" }}
+                style={{ border: "none", width: "100%", height: "100%" }}
                 loading="eager"
               />
             ) : bunnyNet.directUrl ? (
@@ -230,10 +230,10 @@ export function HeroSection() {
               // YouTube iframe (alternativa gratuita)
               <iframe
                 src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&controls=0&disablekb=1&fs=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${youtubeVideoId}&iv_load_policy=3&cc_load_policy=0&mute=0`}
-                className="w-full h-full rounded-lg"
+                className="absolute inset-0 w-full h-full rounded-lg"
                 allow="autoplay; encrypted-media; fullscreen"
                 allowFullScreen
-                style={{ border: "none" }}
+                style={{ border: "none", width: "100%", height: "100%" }}
               />
             ) : hasVideo ? (
               // Player de vídeo customizado com barra roxa

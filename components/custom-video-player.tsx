@@ -305,7 +305,7 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "", g
       <video
         ref={videoRef}
         src={videoUrl}
-        className="w-full h-full object-contain"
+        className="absolute inset-0 w-full h-full object-cover"
         playsInline
         preload="auto"
         onClick={togglePlay}
