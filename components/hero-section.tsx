@@ -8,32 +8,45 @@ import { CustomVideoPlayer } from "@/components/custom-video-player"
 // 
 // ⚠️ IMPORTANTE: Para usar o player customizado com barra roxa, você precisa de uma URL DIRETA do vídeo
 //
-// OPÇÕES RECOMENDADAS:
-// 1. Google Drive (link direto de streaming):
+// OPÇÕES RECOMENDADAS (GRATUITAS):
+// 
+// 1. 🥇 Bunny.net Stream (RECOMENDADO - 1GB grátis):
+//    - Acesse: https://bunny.net/stream/
+//    - Crie conta gratuita
+//    - Faça upload do vídeo
+//    - Copie a URL de streaming (formato: https://vz-xxxxx.b-cdn.net/xxxxx/play_480p.mp4)
+//    - Cole aqui: const VIDEO_URL = "https://vz-xxxxx.b-cdn.net/xxxxx/play_480p.mp4"
+//
+// 2. 🥈 YouTube (GRATUITO - Ilimitado):
+//    - Faça upload no YouTube
+//    - Configure como "Não listado" ou "Público"
+//    - Cole a URL: https://www.youtube.com/watch?v=VIDEO_ID
+//    - ou: https://youtu.be/VIDEO_ID
+//    - Funciona automaticamente (usa iframe do YouTube)
+//
+// 3. 🥉 Google Drive (pode ter problemas de CSP):
 //    - Faça upload no Google Drive
 //    - Compartilhe como "Qualquer pessoa com o link pode ver"
-//    - Extraia o FILE_ID da URL: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-//    - Use: https://drive.google.com/uc?export=view&id=FILE_ID
+//    - Cole: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
 //
-// 2. Hospedagem própria (CDN, servidor):
-//    - Upload em servidor próprio ou CDN (Cloudflare, AWS S3, etc.)
-//    - Cole a URL direta do arquivo: https://seuservidor.com/video.mp4
-//
-// 3. Outros serviços:
-//    - Vimeo (com link direto)
-//    - Cloudflare Stream
-//    - AWS CloudFront
+// 4. Hospedagem própria (VPS, CDN):
+//    - Upload em servidor próprio ou CDN
+//    - Cole a URL direta: https://seuservidor.com/video.mp4
 //
 // FORMATOS ACEITOS:
-// - MP4: .mp4
+// - MP4: .mp4 (recomendado)
 // - WebM: .webm
 // - OGG: .ogg
+// - YouTube: URLs do YouTube/youtu.be
 // - Qualquer URL direta de vídeo que o navegador suporte
 
-// Cole aqui a URL DIRETA do seu vídeo
-// Exemplo Google Drive: https://drive.google.com/uc?export=view&id=1ABC123xyz456
+// Cole aqui a URL do seu vídeo
+// Exemplo Bunny.net iframe: https://iframe.mediadelivery.net/play/539276/06a6aff2-d8da-41dc-8942-ae5119eca3aa
+// Exemplo Bunny.net direto: https://vz-xxxxx.b-cdn.net/xxxxx/play_480p.mp4
+// Exemplo YouTube: https://www.youtube.com/watch?v=VIDEO_ID
+// Exemplo Google Drive: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
 // Exemplo servidor: https://seuservidor.com/video.mp4
-const VIDEO_URL = "https://drive.google.com/file/d/1ldg7CtfTrNCbNsJvLncwuV4JegPQ9zis/view?usp=sharing" // Cole sua URL DIRETA de vídeo aqui
+const VIDEO_URL = "https://iframe.mediadelivery.net/play/539276/06a6aff2-d8da-41dc-8942-ae5119eca3aa" // Cole sua URL aqui
 
 // Função para detectar se é uma URL direta de vídeo
 function isDirectVideoUrl(url: string): boolean {
@@ -83,6 +96,23 @@ function getGoogleDriveDirectUrl(url: string): string {
   return `https://drive.google.com/uc?export=download&id=${fileId}`
 }
 
+// Função para extrair ID do YouTube
+function getYouTubeVideoId(url: string): string {
+  if (!url) return ""
+  
+  let videoId = ""
+  const watchMatch = url.match(/(?:youtube\.com\/watch\?v=)([^&\n?#]+)/)
+  if (watchMatch) videoId = watchMatch[1]
+  
+  const youtuBeMatch = url.match(/(?:youtu\.be\/)([^&\n?#]+)/)
+  if (youtuBeMatch) videoId = youtuBeMatch[1]
+  
+  const embedMatch = url.match(/(?:youtube\.com\/embed\/)([^&\n?#]+)/)
+  if (embedMatch) videoId = embedMatch[1]
+  
+  return videoId
+}
+
 // Função para processar a URL do vídeo
 function processVideoUrl(url: string): string {
   if (!url) return ""
@@ -97,7 +127,7 @@ function processVideoUrl(url: string): string {
     return getGoogleDriveDirectUrl(url)
   }
   
-  // Se for YouTube, retorna vazio (não suporta player customizado)
+  // YouTube retorna vazio (será tratado separadamente com iframe)
   if (url.includes("youtube.com") || url.includes("youtu.be")) {
     return ""
   }
@@ -105,10 +135,36 @@ function processVideoUrl(url: string): string {
   return url
 }
 
+// Função para detectar e processar URL do Bunny.net
+function getBunnyNetUrl(url: string): { isIframe: boolean; iframeUrl?: string; directUrl?: string } {
+  if (!url) return { isIframe: false }
+  
+  // Formato iframe: https://iframe.mediadelivery.net/play/LIBRARY_ID/VIDEO_ID
+  const iframeMatch = url.match(/iframe\.mediadelivery\.net\/play\/(\d+)\/([a-zA-Z0-9-]+)/)
+  if (iframeMatch) {
+    return {
+      isIframe: true,
+      iframeUrl: url, // Usa o iframe diretamente
+    }
+  }
+  
+  // Formato direto: https://vz-xxxxx.b-cdn.net/xxxxx/play_480p.mp4
+  if (url.includes("b-cdn.net") || url.includes("mediadelivery.net")) {
+    return {
+      isIframe: false,
+      directUrl: url,
+    }
+  }
+  
+  return { isIframe: false }
+}
+
 export function HeroSection() {
   const videoUrl = processVideoUrl(VIDEO_URL)
   const hasVideo = Boolean(videoUrl)
   const isGoogleDrive = VIDEO_URL.includes("drive.google.com") && !VIDEO_URL.includes(".mp4") && !VIDEO_URL.includes(".webm")
+  const isYouTube = VIDEO_URL.includes("youtube.com") || VIDEO_URL.includes("youtu.be")
+  const bunnyNet = getBunnyNetUrl(VIDEO_URL)
   
   // Extrai o file ID do Google Drive
   let googleDriveFileId = ""
@@ -118,6 +174,9 @@ export function HeroSection() {
       googleDriveFileId = fileMatch[1]
     }
   }
+  
+  // Extrai o ID do YouTube
+  const youtubeVideoId = isYouTube ? getYouTubeVideoId(VIDEO_URL) : ""
   
   // Para Google Drive, tenta usar o player HTML5 primeiro com URL direta
   // Se não funcionar, o componente CustomVideoPlayer tentará iframe como fallback
@@ -150,7 +209,33 @@ export function HeroSection() {
 
         <div className="pt-8 pb-4">
           <div className="relative w-full max-w-4xl mx-auto aspect-video bg-background/30 backdrop-blur-sm border border-primary/20 rounded-lg overflow-hidden shadow-2xl glow-purple transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(147,51,234,0.3)] hover:scale-[1.01]">
-            {hasVideo ? (
+            {bunnyNet.isIframe && bunnyNet.iframeUrl ? (
+              // Bunny.net iframe embed
+              <iframe
+                src={bunnyNet.iframeUrl}
+                className="w-full h-full rounded-lg"
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
+                style={{ border: "none" }}
+                loading="eager"
+              />
+            ) : bunnyNet.directUrl ? (
+              // Bunny.net URL direta (player customizado)
+              <CustomVideoPlayer 
+                videoUrl={bunnyNet.directUrl}
+                autoplay={true}
+                className="rounded-lg"
+              />
+            ) : isYouTube && youtubeVideoId ? (
+              // YouTube iframe (alternativa gratuita)
+              <iframe
+                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&controls=0&disablekb=1&fs=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${youtubeVideoId}&iv_load_policy=3&cc_load_policy=0&mute=0`}
+                className="w-full h-full rounded-lg"
+                allow="autoplay; encrypted-media; fullscreen"
+                allowFullScreen
+                style={{ border: "none" }}
+              />
+            ) : hasVideo ? (
               // Player de vídeo customizado com barra roxa
               // Para Google Drive, tenta URL direta primeiro, depois iframe como fallback
               <CustomVideoPlayer 
