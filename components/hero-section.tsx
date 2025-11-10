@@ -74,16 +74,10 @@ function getGoogleDriveDirectUrl(url: string): string {
   
   if (!fileId) return ""
   
-  // Tenta múltiplos formatos do Google Drive para streaming
-  // Formato 1: uc?export=view (mais comum para streaming)
-  // Formato 2: uc?export=download (força download, mas alguns navegadores podem reproduzir)
-  // Nota: O Google Drive pode bloquear acesso direto dependendo das configurações de compartilhamento
-  
-  // Primeiro tenta o formato de visualização
-  return `https://drive.google.com/uc?export=view&id=${fileId}`
-  
-  // Alternativa (descomente se o formato acima não funcionar):
-  // return `https://drive.google.com/uc?export=download&id=${fileId}`
+  // Para vídeos, o Google Drive requer o formato de download direto
+  // Este formato funciona melhor para streaming de vídeos
+  // IMPORTANTE: O arquivo deve estar configurado como "Qualquer pessoa com o link pode ver"
+  return `https://drive.google.com/uc?export=download&id=${fileId}`
 }
 
 // Função para processar a URL do vídeo
@@ -111,6 +105,16 @@ function processVideoUrl(url: string): string {
 export function HeroSection() {
   const videoUrl = processVideoUrl(VIDEO_URL)
   const hasVideo = Boolean(videoUrl)
+  const isGoogleDrive = VIDEO_URL.includes("drive.google.com") && !VIDEO_URL.includes(".mp4") && !VIDEO_URL.includes(".webm")
+  
+  // Extrai o file ID do Google Drive para usar no iframe
+  let googleDriveFileId = ""
+  if (isGoogleDrive) {
+    const fileMatch = VIDEO_URL.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+    if (fileMatch) {
+      googleDriveFileId = fileMatch[1]
+    }
+  }
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-4 py-20 overflow-hidden">
@@ -140,8 +144,17 @@ export function HeroSection() {
 
         <div className="pt-8 pb-4">
           <div className="relative w-full max-w-4xl mx-auto aspect-video bg-background/30 backdrop-blur-sm border border-primary/20 rounded-lg overflow-hidden shadow-2xl glow-purple transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_40px_rgba(147,51,234,0.3)] hover:scale-[1.01]">
-            {hasVideo ? (
-              // Player de vídeo customizado com barra roxa
+            {hasVideo && isGoogleDrive && googleDriveFileId ? (
+              // Iframe do Google Drive (mais confiável para vídeos)
+              <iframe
+                src={`https://drive.google.com/file/d/${googleDriveFileId}/preview?autoplay=1&mute=0`}
+                className="w-full h-full rounded-lg"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                style={{ border: "none" }}
+              />
+            ) : hasVideo ? (
+              // Player de vídeo customizado com barra roxa (para URLs diretas)
               <CustomVideoPlayer 
                 videoUrl={videoUrl} 
                 autoplay={true}

@@ -22,6 +22,8 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+  const [useIframe, setUseIframe] = useState(false)
 
   // Atualiza o tempo atual e a barra de progresso
   const updateProgress = () => {
@@ -115,9 +117,26 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
     const video = videoRef.current
     if (!video) return
 
+    // Se for Google Drive, tenta usar iframe diretamente (mais confiável)
+    if (videoUrl.includes("drive.google.com") && !videoUrl.includes(".mp4") && !videoUrl.includes(".webm")) {
+      const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+      if (fileIdMatch) {
+        // Aguarda um pouco para ver se o vídeo HTML5 carrega, se não, usa iframe
+        const timeout = setTimeout(() => {
+          if (isLoading && !video.duration) {
+            setUseIframe(true)
+            setHasError(false)
+          }
+        }, 3000)
+        
+        return () => clearTimeout(timeout)
+      }
+    }
+
     const handleLoadedMetadata = () => {
       setDuration(video.duration)
       setIsLoading(false)
+      setHasError(false)
     }
 
     const handleTimeUpdate = () => {
@@ -126,6 +145,7 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
 
     const handlePlay = () => {
       setIsPlaying(true)
+      setIsLoading(false)
     }
 
     const handlePause = () => {
@@ -140,6 +160,30 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
       }
     }
 
+    const handleError = (e: Event) => {
+      console.error("Erro ao carregar vídeo:", e)
+      setIsLoading(false)
+      setHasError(true)
+      
+      // Se for Google Drive e não funcionou, tenta usar iframe
+      if (video.src.includes("drive.google.com")) {
+        const currentSrc = video.src
+        // Tenta extrair o file ID e usar iframe
+        const fileIdMatch = currentSrc.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+        if (fileIdMatch) {
+          setUseIframe(true)
+        }
+      }
+    }
+
+    const handleCanPlay = () => {
+      setIsLoading(false)
+    }
+
+    const handleWaiting = () => {
+      setIsLoading(true)
+    }
+
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement)
     }
@@ -149,14 +193,36 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
     video.addEventListener("play", handlePlay)
     video.addEventListener("pause", handlePause)
     video.addEventListener("ended", handleEnded)
+    video.addEventListener("error", handleError)
+    video.addEventListener("canplay", handleCanPlay)
+    video.addEventListener("waiting", handleWaiting)
     document.addEventListener("fullscreenchange", handleFullscreenChange)
 
-    // Autoplay
+    // Autoplay com fallback para muted
     if (autoplay) {
-      video.play().catch((error) => {
-        console.log("Autoplay bloqueado:", error)
-        setIsPlaying(false)
-      })
+      const attemptPlay = async () => {
+        try {
+          await video.play()
+          setIsPlaying(true)
+        } catch (error: any) {
+          console.log("Autoplay bloqueado:", error)
+          // Tenta autoplay mutado como fallback
+          if (error.name === "NotAllowedError") {
+            video.muted = true
+            setIsMuted(true)
+            try {
+              await video.play()
+              setIsPlaying(true)
+            } catch (mutedError) {
+              console.log("Autoplay mutado também bloqueado:", mutedError)
+              setIsPlaying(false)
+            }
+          } else {
+            setIsPlaying(false)
+          }
+        }
+      }
+      attemptPlay()
     }
 
     // Mostrar/ocultar controles ao mover o mouse
@@ -183,13 +249,38 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
       video.removeEventListener("play", handlePlay)
       video.removeEventListener("pause", handlePause)
       video.removeEventListener("ended", handleEnded)
+      video.removeEventListener("error", handleError)
+      video.removeEventListener("canplay", handleCanPlay)
+      video.removeEventListener("waiting", handleWaiting)
       document.removeEventListener("fullscreenchange", handleFullscreenChange)
       if (container) {
         container.removeEventListener("mousemove", handleMouseMove)
       }
       clearTimeout(controlsTimeout)
     }
-  }, [autoplay, isPlaying])
+  }, [autoplay, isPlaying, videoUrl])
+
+  // Se precisar usar iframe (fallback para Google Drive)
+  if (useIframe && videoUrl.includes("drive.google.com")) {
+    const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+    const fileId = fileIdMatch ? fileIdMatch[1] : ""
+    const iframeUrl = `https://drive.google.com/file/d/${fileId}/preview?autoplay=1&mute=0`
+    
+    return (
+      <div
+        ref={containerRef}
+        className={`relative w-full h-full bg-black rounded-lg overflow-hidden ${className}`}
+      >
+        <iframe
+          src={iframeUrl}
+          className="w-full h-full"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          style={{ border: "none" }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -210,12 +301,50 @@ export function CustomVideoPlayer({ videoUrl, autoplay = true, className = "" }:
         playsInline
         preload="auto"
         onClick={togglePlay}
+        crossOrigin="anonymous"
+        onError={(e) => {
+          console.error("Erro no elemento de vídeo:", e)
+          setIsLoading(false)
+          setHasError(true)
+          // Tenta usar iframe se for Google Drive
+          if (videoUrl.includes("drive.google.com")) {
+            const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+            if (fileIdMatch) {
+              setUseIframe(true)
+            }
+          }
+        }}
       />
 
       {/* Loading Indicator */}
-      {isLoading && (
+      {isLoading && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Error Message */}
+      {hasError && !useIframe && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+          <div className="text-center space-y-4 px-4 max-w-md">
+            <div className="w-16 h-16 mx-auto rounded-full bg-destructive/20 border-2 border-destructive flex items-center justify-center">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <div>
+              <p className="text-white font-semibold text-lg mb-2">Erro ao carregar vídeo</p>
+              <p className="text-white/70 text-sm">
+                O Google Drive não permite streaming direto de vídeos. 
+                Por favor, use um serviço de hospedagem de vídeo adequado ou hospede o vídeo em um servidor próprio.
+              </p>
+            </div>
+            <div className="text-xs text-white/50 space-y-1">
+              <p>💡 Alternativas recomendadas:</p>
+              <p>• YouTube (público)</p>
+              <p>• Vimeo</p>
+              <p>• Servidor próprio / CDN</p>
+              <p>• Cloudflare Stream</p>
+            </div>
+          </div>
         </div>
       )}
 
